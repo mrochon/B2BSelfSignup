@@ -35,7 +35,7 @@ namespace B2BSelfSignup.Controllers
             var http = new HttpClient();
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            // Does the user already exist? Maybe I don't need to
+            // Inviting an existing user does not create a new user
 
             // Invite user
             var email = User.FindFirst("preferred_username").Value;
@@ -54,6 +54,7 @@ namespace B2BSelfSignup.Controllers
                 _logger.LogInformation($"User {email} successfully invited");
                 var json = await resp.Content.ReadAsStringAsync();
                 //var newId = JsonDocument.Parse(json).RootElement.GetProperty("invitedUser").GetProperty("id").GetString();
+                // Consider adding the user to some security group designed for this purpose
                 var redeemUrl = JsonDocument.Parse(json).RootElement.GetProperty("inviteRedeemUrl").GetString();
                 Response.Redirect(redeemUrl);
             } else

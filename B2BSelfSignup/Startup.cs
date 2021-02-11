@@ -31,6 +31,7 @@ namespace B2BSelfSignup
         {
             "d5cf3ff0-9668-4c65-af0b-054ca6cf6eaa", // masterbrand.com & masterbrandcabinets.com
             "ce505d35-51b1-4cb8-8311-1bc180cb137a", // fbgpg.com & moen.com
+            "320c1115-9cee-4aad-a27d-4b130a774c4a", // fbhs.com
             "72f988bf-86f1-41af-91ab-2d7cd011db47" // microsoft.com
         };
 
