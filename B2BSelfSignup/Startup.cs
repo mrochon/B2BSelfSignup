@@ -26,15 +26,7 @@ namespace B2BSelfSignup
             Configuration = configuration;
         }
 
-        // Use https://login.microsoftonline.com/fbgpg.com/v2.0/.well-known/openid-configuration to discover tenantId
-
-        private readonly string[] ValidTenants =
-        {
-            "d5cf3ff0-9668-4c65-af0b-054ca6cf6eaa", // masterbrand.com & masterbrandcabinets.com
-            "ce505d35-51b1-4cb8-8311-1bc180cb137a", // fbgpg.com & moen.com
-            "320c1115-9cee-4aad-a27d-4b130a774c4a", // fbhs.com
-            "72f988bf-86f1-41af-91ab-2d7cd011db47" // microsoft.com
-        };
+        // Use https://login.microsoftonline.com/fbgpg.com/v2.0/.well-known/openid-configuration to discover ids of tenantId
 
         public IConfiguration Configuration { get; }
 
@@ -51,8 +43,10 @@ namespace B2BSelfSignup
                 var currDelegate = options.Events.OnTokenValidated;
                 options.Events.OnTokenValidated = async (ctx) =>
                 {
+                    List<string> validTenants = new List<string>();
+                    Configuration.Bind("ValidTenants", validTenants);
                     var tid = ctx.Principal.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
-                    if (!ValidTenants.Contains(tid))
+                    if (!validTenants.Contains(tid))
                     {
                         ctx.Fail(new Exception("Unauthorized"));
                     }
