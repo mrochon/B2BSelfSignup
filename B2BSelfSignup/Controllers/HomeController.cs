@@ -109,5 +109,11 @@ namespace B2BSelfSignup.Controllers
             }
             return View(err);
         }
+
+        [AllowAnonymous]
+        public IActionResult Privacy()
+        {
+            return View();
+        }
     }
 }
