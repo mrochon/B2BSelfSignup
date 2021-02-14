@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.JSInterop.Implementation;
 using System;
 using System.Collections.Generic;
@@ -36,14 +37,11 @@ namespace B2BSelfSignup.Controllers
 
         public async Task<IActionResult> Index()
         {
-            _logger.LogTrace("Home.Index starting");
+            var model = new HomeViewModel();
+            _logger.LogTrace($"{model.CorrelationId}: Home.Index starting");
             var token = await _tokenAcquisition.GetAccessTokenForAppAsync("https://graph.microsoft.com/.default", _options.Value.HostTenantName);
             var http = new HttpClient();
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            // Inviting an existing user does not create a new user
-
-            // Invite user
             var email = User.FindFirst("preferred_username").Value;
             var invitation = new
             {
@@ -57,7 +55,7 @@ namespace B2BSelfSignup.Controllers
             var resp = await http.SendAsync(request);
             if (resp.IsSuccessStatusCode)
             {
-                _logger.LogInformation($"User {email} successfully invited");
+                _logger.LogInformation($"{model.CorrelationId}:User {email} successfully invited");
                 var json = await resp.Content.ReadAsStringAsync();
                 var newId = JsonDocument.Parse(json).RootElement.GetProperty("invitedUser").GetProperty("id").GetString();
                 var redeemUrl = JsonDocument.Parse(json).RootElement.GetProperty("inviteRedeemUrl").GetString();
@@ -75,37 +73,41 @@ namespace B2BSelfSignup.Controllers
                     json = await resp.Content.ReadAsStringAsync();
                     var msg = JsonDocument.Parse(json).RootElement.GetProperty("error").GetProperty("message").GetString();
                     if (msg.StartsWith("One or more added object references already exist"))
-                        _logger.LogInformation($"User {email} already exists as member of the group");
+                        _logger.LogInformation($"{model.CorrelationId}: User {email} already exists as member of the group");
                     else
                     {
-                        _logger.LogError($"Unusual bad request error when adding {email} to the security group");
-                        return Error();
+                        _logger.LogError($"{model.CorrelationId}: Unusual bad request error when adding {email} to the security group. {msg}");
+                        model.Message = "An unexpected error occurred.";
                     }
                 }
                 else
                 {
-                    _logger.LogError($"Failed to add {email} to the security group");
-                    return Error();
+                    var err = await resp.Content.ReadAsStringAsync();
+                    _logger.LogError($"{model.CorrelationId}: Failed to add {email} to the security group. {err}");
+                    model.Message = "Unexpected error occurred.";
                 }
-                Response.Redirect(redeemUrl);
+                model.RedirectUrl = _options.Value.RedirectUrl;
+                //Response.Redirect(redeemUrl);
             } else
             {
-                Response.Redirect("/error");
+                var err = await resp.Content.ReadAsStringAsync();
+                _logger.LogError($"{model.CorrelationId}: Failed to process invitation. {err}");
+                model.Message = "Unexpected error occurred.";
             }
-            _logger.LogTrace("Home.Index existing");
-            return View();
+            _logger.LogTrace($"{model.CorrelationId}: Home.Index exiting");
+            return View(model);
         }
-
-        public IActionResult Privacy()
-        {
-            return View();
-        }
-
         [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var err = new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier };
+            if (Request.Query.ContainsKey("msg"))
+            {
+                var msg = Request.Query["msg"][0];
+                err.Message = Base64UrlEncoder.Decode(msg);
+            }
+            return View(err);
         }
     }
 }

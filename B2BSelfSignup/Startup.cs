@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -44,7 +45,15 @@ namespace B2BSelfSignup
                 options.Events.OnTokenValidated = async (ctx) =>
                 {
                     List<string> validTenants = new List<string>();
-                    Configuration.Bind("ValidTenants", validTenants);
+                    var tenants = Configuration.GetValue<string>("ValidTenantsString");
+                    if (string.IsNullOrEmpty(tenants))
+                    {
+                        Configuration.Bind("ValidTenants", validTenants);
+                    }
+                    else
+                    {
+                        validTenants = tenants.Split(' ', ',').ToList();
+                    }
                     var tid = ctx.Principal.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
                     if (!validTenants.Contains(tid))
                     {
@@ -55,7 +64,7 @@ namespace B2BSelfSignup
                 };
                 options.Events.OnAuthenticationFailed = async (ctx) =>
                 {
-                    ctx.Response.Redirect($"/Error?msg={Base64UrlEncoder.Encode(ctx.Exception.Message)}");
+                    ctx.Response.Redirect($"{ctx.Request.GetEncodedUrl()}/Error?msg={Base64UrlEncoder.Encode(ctx.Exception.Message)}");
                     ctx.HandleResponse(); // Suppress the exception
                     await Task.CompletedTask;
                 };
