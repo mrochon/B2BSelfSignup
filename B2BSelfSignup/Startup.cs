@@ -62,9 +62,10 @@ namespace B2BSelfSignup
                     if (currDelegate != null)
                         await currDelegate.Invoke(ctx);
                 };
-                options.Events.OnAuthenticationFailed = async (ctx) =>
+                options.Events.OnRemoteFailure = async (ctx) =>
                 {
-                    ctx.Response.Redirect($"{ctx.Request.GetEncodedUrl()}/Error?msg={Base64UrlEncoder.Encode(ctx.Exception.Message)}");
+                    var url = ctx.Request.GetEncodedUrl().Replace("signin-oidc", "home/error");
+                    ctx.Response.Redirect($"{url}?msg={Base64UrlEncoder.Encode(ctx.Failure.Message)}");
                     ctx.HandleResponse(); // Suppress the exception
                     await Task.CompletedTask;
                 };
