@@ -45,14 +45,12 @@ namespace B2BSelfSignup
                 options.Events.OnTokenValidated = async (ctx) =>
                 {
                     List<string> validTenants = new List<string>();
+                    Configuration.Bind("ValidTenants", validTenants);
+                    // Add any tenants defined in Azure App Settings
                     var tenants = Configuration.GetValue<string>("ValidTenantsString");
-                    if (string.IsNullOrEmpty(tenants))
+                    if (!string.IsNullOrEmpty(tenants))
                     {
-                        Configuration.Bind("ValidTenants", validTenants);
-                    }
-                    else
-                    {
-                        validTenants = tenants.Split(' ', ',').ToList();
+                        validTenants = (validTenants.Concat(tenants.Split(' ', ','))).ToList();
                     }
                     var tid = ctx.Principal.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
                     if (!validTenants.Contains(tid))
