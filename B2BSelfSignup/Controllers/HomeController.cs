@@ -23,16 +23,17 @@ namespace B2BSelfSignup.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly ITokenAcquisition _tokenAcquisition;
-        private readonly IOptions<InvitationOptions> _options;
+        private readonly IOptions<InvitationOptions> _invitationOptions;
+        private readonly IOptions<IEnumerable<string>> _validTenants;
 
         public HomeController(
             ILogger<HomeController> logger, 
             ITokenAcquisition tokenAcquisition,
-            IOptions<InvitationOptions> options)
+            IOptions<InvitationOptions> invitationOptions)
         {
             _logger = logger;
             _tokenAcquisition = tokenAcquisition;
-            _options = options;
+            _invitationOptions = invitationOptions;
         }
 
         public async Task<IActionResult> Index()
@@ -40,20 +41,28 @@ namespace B2BSelfSignup.Controllers
             var model = new HomeViewModel();
             _logger.LogTrace($"{model.CorrelationId}: Home.Index starting");
             var tid = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
-            if (tid == _options.Value.HostTenantId)
+            if (tid == _invitationOptions.Value.HostTenantId)
             {
-                model.RedirectUrl = _options.Value.RedirectUrl;
+                _logger.LogError($"{model.CorrelationId}: Current memeber: {tid}");
+                model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
                 model.Message = "You are already a member of this domain";
                 return View(model);
             }
-            var token = await _tokenAcquisition.GetAccessTokenForAppAsync("https://graph.microsoft.com/.default", _options.Value.HostTenantName);
+            if (!_invitationOptions.Value.ValidTenants.Contains(tid))
+            {
+                _logger.LogError($"{model.CorrelationId}: Unauthorized: {tid}");
+                model.Message = $"Unauthorized {tid}.";
+                return View(model);
+            }
+
+            var token = await _tokenAcquisition.GetAccessTokenForAppAsync("https://graph.microsoft.com/.default", _invitationOptions.Value.HostTenantName);
             var http = new HttpClient();
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             var email = User.FindFirst("preferred_username").Value;
             var invitation = new
             {
                 invitedUserEmailAddress = email,
-                inviteRedirectUrl = _options.Value.RedirectUrl
+                inviteRedirectUrl = _invitationOptions.Value.RedirectUrl
             };
             var request = new HttpRequestMessage(HttpMethod.Post, "https://graph.microsoft.com/v1.0/invitations")
             {
@@ -66,7 +75,7 @@ namespace B2BSelfSignup.Controllers
                 var json = await resp.Content.ReadAsStringAsync();
                 var newId = JsonDocument.Parse(json).RootElement.GetProperty("invitedUser").GetProperty("id").GetString();
                 var redeemUrl = JsonDocument.Parse(json).RootElement.GetProperty("inviteRedeemUrl").GetString();
-                request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/groups/{_options.Value.GroupObjectId}/members/$ref")
+                request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/groups/{_invitationOptions.Value.GroupObjectId}/members/$ref")
                 {
                     Content = new StringContent(
                         $"{{\"@odata.id\": \"https://graph.microsoft.com/v1.0/directoryObjects/{newId}\"}}",
@@ -84,7 +93,8 @@ namespace B2BSelfSignup.Controllers
                     else
                     {
                         _logger.LogError($"{model.CorrelationId}: Unusual bad request error when adding {email} to the security group. {msg}");
-                        model.Message = "An unexpected error occurred.";
+                        model.Message = "Error adding to security group.";
+                        return View(model);
                     }
                 }
                 else
@@ -92,14 +102,15 @@ namespace B2BSelfSignup.Controllers
                     var err = await resp.Content.ReadAsStringAsync();
                     _logger.LogError($"{model.CorrelationId}: Failed to add {email} to the security group. {err}");
                     model.Message = "Unexpected error occurred.";
+                    return View(model);
                 }
-                model.RedirectUrl = _options.Value.RedirectUrl;
+                model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
                 //Response.Redirect(redeemUrl);
             } else
             {
                 var err = await resp.Content.ReadAsStringAsync();
                 _logger.LogError($"{model.CorrelationId}: Failed to process invitation. {err}");
-                model.Message = "Unexpected error occurred.";
+                model.Message = "Invitation failed.";
             }
             _logger.LogTrace($"{model.CorrelationId}: Home.Index exiting");
             return View(model);

@@ -4,9 +4,10 @@
 
 @section Scripts {
     <script>
-        window.setTimeout(function () {
-            window.location.href = "@Model.RedirectUrl";
-        }, 3000);
+        rs = window.setTimeout(function () {
+                clearTimeout(rs);
+                window.location.href = "@Model.RedirectUrl";
+            }, 3000);
     </script>
 }
 
@@ -19,7 +20,7 @@
     }
     @if (Model.ShowRedirectUrl)
     {
-        <p>Momentarily, you will now be redirected to the following site.</p>
+        <p>You will now be redirected to the following site.</p>
         <p><a href=@Model.RedirectUrl>@Model.RedirectUrl</a></p>
     }
 </div>

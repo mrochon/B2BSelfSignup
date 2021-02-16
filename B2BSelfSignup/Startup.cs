@@ -34,33 +34,25 @@ namespace B2BSelfSignup
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.Configure<InvitationOptions>(options => Configuration.GetSection("Invitation").Bind(options));
+            services.Configure<InvitationOptions>(options =>
+            {
+                Configuration.GetSection("Invitation").Bind(options);
+                List<string> validTenants = new List<string>();
+                Configuration.Bind("ValidTenants", validTenants);
+                var tenants = Configuration.GetValue<string>("ValidTenantsString");
+                if (!string.IsNullOrEmpty(tenants))
+                {
+                    validTenants = (validTenants.Concat(tenants.Split(' ', ','))).ToList();
+                }
+                options.ValidTenants = validTenants;
+            });
             services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApp(Configuration.GetSection("AzureAd"))
                 .EnableTokenAcquisitionToCallDownstreamApi()
                 .AddInMemoryTokenCaches();
+
             services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>
             {
-                var currDelegate = options.Events.OnTokenValidated;
-                options.Events.OnTokenValidated = async (ctx) =>
-                {
-                    List<string> validTenants = new List<string>();
-                    Configuration.Bind("ValidTenants", validTenants);
-                    // Add any tenants defined in Azure App Settings
-                    var tenants = Configuration.GetValue<string>("ValidTenantsString");
-                    if (!string.IsNullOrEmpty(tenants))
-                    {
-                        // Let it blow up with HTTP 500 if the settings are wrong
-                        validTenants = (validTenants.Concat(tenants.Split(' ', ','))).ToList();
-                    }
-                    var tid = ctx.Principal.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
-                    if (!validTenants.Contains(tid))
-                    {
-                        ctx.Fail(new Exception($"Unauthorized: {tid}"));
-                    }
-                    if (currDelegate != null)
-                        await currDelegate.Invoke(ctx);
-                };
                 options.Events.OnRemoteFailure = async (ctx) =>
                 {
                     var url = ctx.Request.GetEncodedUrl().Replace("signin-oidc", "home/error");
