@@ -40,7 +40,10 @@ namespace B2BSelfSignup.Controllers
         {
             var model = new HomeViewModel();
             _logger.LogTrace($"{model.CorrelationId}: Home.Index starting");
+            var email = User.FindFirst("preferred_username").Value;
+            model.Email = email;
             var tid = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
+            model.Tid = tid;
             if (tid == _invitationOptions.Value.HostTenantId)
             {
                 _logger.LogInformation($"{model.CorrelationId}: Current memeber: {tid}");
@@ -58,7 +61,6 @@ namespace B2BSelfSignup.Controllers
             var token = await _tokenAcquisition.GetAccessTokenForAppAsync("https://graph.microsoft.com/.default", _invitationOptions.Value.HostTenantName);
             var http = new HttpClient();
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            var email = User.FindFirst("preferred_username").Value;
             var invitation = new
             {
                 invitedUserEmailAddress = email,
