@@ -50,12 +50,13 @@ namespace B2BSelfSignup
                     var tenants = Configuration.GetValue<string>("ValidTenantsString");
                     if (!string.IsNullOrEmpty(tenants))
                     {
+                        // Let it blow up with HTTP 500 if the settings are wrong
                         validTenants = (validTenants.Concat(tenants.Split(' ', ','))).ToList();
                     }
                     var tid = ctx.Principal.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
                     if (!validTenants.Contains(tid))
                     {
-                        ctx.Fail(new Exception("Unauthorized"));
+                        ctx.Fail(new Exception($"Unauthorized: {tid}"));
                     }
                     if (currDelegate != null)
                         await currDelegate.Invoke(ctx);
