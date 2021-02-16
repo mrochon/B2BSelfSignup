@@ -43,7 +43,7 @@ namespace B2BSelfSignup.Controllers
             var tid = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
             if (tid == _invitationOptions.Value.HostTenantId)
             {
-                _logger.LogError($"{model.CorrelationId}: Current memeber: {tid}");
+                _logger.LogInformation($"{model.CorrelationId}: Current memeber: {tid}");
                 model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
                 model.Message = "You are already a member of this domain";
                 return View(model);

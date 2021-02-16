@@ -1,13 +1,15 @@
-﻿@{
+﻿@model HomeViewModel
+@{
     ViewData["Title"] = "Home Page";
 }
 
 @section Scripts {
     <script>
-        rs = window.setTimeout(function () {
-                clearTimeout(rs);
+        window.setTimeout(function () {
+            if (@Model.HasRedirectUrl) {
                 window.location.href = "@Model.RedirectUrl";
-            }, 3000);
+            }
+        }, 3000);
     </script>
 }
 
