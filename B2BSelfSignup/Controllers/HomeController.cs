@@ -39,6 +39,13 @@ namespace B2BSelfSignup.Controllers
         {
             var model = new HomeViewModel();
             _logger.LogTrace($"{model.CorrelationId}: Home.Index starting");
+            var tid = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
+            if (tid == _options.Value.HostTenantId)
+            {
+                model.RedirectUrl = _options.Value.RedirectUrl;
+                model.Message = "You are already a member of this domain";
+                return View(model);
+            }
             var token = await _tokenAcquisition.GetAccessTokenForAppAsync("https://graph.microsoft.com/.default", _options.Value.HostTenantName);
             var http = new HttpClient();
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
