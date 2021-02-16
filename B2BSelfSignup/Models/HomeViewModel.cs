@@ -15,7 +15,12 @@ namespace B2BSelfSignup.Models
         public string RedirectUrl { get; set; }
         public string HasRedirectUrl => string.IsNullOrEmpty(RedirectUrl) ? "false" : "true";
         public bool ShowRedirectUrl => !string.IsNullOrEmpty(RedirectUrl);
-        public string Message { get; set; }
+        public string Message
+        {
+            get => $"{CorrelationId}: {_msg}";
+            set => _msg = value;
+        }
+        private string _msg;
         public bool ShowMessage => !string.IsNullOrEmpty(Message);
     }
 }
