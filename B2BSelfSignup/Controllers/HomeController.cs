@@ -42,11 +42,12 @@ namespace B2BSelfSignup.Controllers
             _logger.LogTrace($"{model.CorrelationId}: Home.Index starting");
             var email = User.FindFirst("preferred_username").Value;
             model.Email = email;
+            _logger.LogTrace($"{model.CorrelationId}: {email}");
             var tid = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
             model.Tid = tid;
             if (tid == _invitationOptions.Value.HostTenantId)
             {
-                _logger.LogInformation($"{model.CorrelationId}: Current memeber: {tid}");
+                _logger.LogTrace($"{model.CorrelationId}: Current memeber: {tid}");
                 model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
                 model.Message = "You are already a member of this domain";
                 return View(model);
