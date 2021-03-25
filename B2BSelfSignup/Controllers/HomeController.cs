@@ -27,7 +27,7 @@ namespace B2BSelfSignup.Controllers
         private readonly IOptions<IEnumerable<string>> _validTenants;
 
         public HomeController(
-            ILogger<HomeController> logger, 
+            ILogger<HomeController> logger,
             ITokenAcquisition tokenAcquisition,
             IOptions<InvitationOptions> invitationOptions)
         {
@@ -72,49 +72,59 @@ namespace B2BSelfSignup.Controllers
                 Content = new StringContent(JsonSerializer.Serialize(invitation), Encoding.UTF8, "application/json")
             };
             var resp = await http.SendAsync(request);
-            if (resp.IsSuccessStatusCode)
+            var newId = String.Empty;
+            if (!resp.IsSuccessStatusCode)
             {
-                _logger.LogInformation($"{model.CorrelationId}:User {email} successfully invited");
-                var json = await resp.Content.ReadAsStringAsync();
-                var newId = JsonDocument.Parse(json).RootElement.GetProperty("invitedUser").GetProperty("id").GetString();
-                var redeemUrl = JsonDocument.Parse(json).RootElement.GetProperty("inviteRedeemUrl").GetString();
-                request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/groups/{_invitationOptions.Value.GroupObjectId}/members/$ref")
+                var err = await resp.Content.ReadAsStringAsync();
+                if (err.Contains("The invited user already exists in the directory"))
                 {
-                    Content = new StringContent(
-                        $"{{\"@odata.id\": \"https://graph.microsoft.com/v1.0/directoryObjects/{newId}\"}}",
-                        Encoding.UTF8, "application/json")
-                };
-                resp = await http.SendAsync(request);
-                if (resp.IsSuccessStatusCode)
-                    _logger.LogInformation($"User {email} added to group");
-                else if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    json = await resp.Content.ReadAsStringAsync();
-                    var msg = JsonDocument.Parse(json).RootElement.GetProperty("error").GetProperty("message").GetString();
-                    if (msg.StartsWith("One or more added object references already exist"))
-                        _logger.LogInformation($"{model.CorrelationId}: User {email} already exists as member of the group");
-                    else
-                    {
-                        _logger.LogError($"{model.CorrelationId}: Unusual bad request error when adding {email} to the security group. {msg}");
-                        model.Message = "Error adding to security group.";
-                        return View(model);
-                    }
+                    var msg = JsonDocument.Parse(err).RootElement.GetProperty("message").GetString();
+                    _logger.LogWarning($"{model.CorrelationId}: {msg}");
+                    newId = msg.Split(": ")[1].Split('.')[0];
                 }
                 else
                 {
-                    var err = await resp.Content.ReadAsStringAsync();
-                    _logger.LogError($"{model.CorrelationId}: Failed to add {email} to the security group. {err}");
-                    model.Message = "Unexpected error occurred.";
+                    _logger.LogError($"{model.CorrelationId}: Failed to process invitation. {err}");
+                    model.Message = "Invitation failed.";
                     return View(model);
                 }
-                model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
-                //Response.Redirect(redeemUrl);
-            } else
+            }
+            else
+            {
+                _logger.LogInformation($"{model.CorrelationId}:User {email} successfully invited");
+                var json = await resp.Content.ReadAsStringAsync();
+                newId = JsonDocument.Parse(json).RootElement.GetProperty("invitedUser").GetProperty("id").GetString();
+            }
+            request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/groups/{_invitationOptions.Value.GroupObjectId}/members/$ref")
+            {
+                Content = new StringContent(
+                    $"{{\"@odata.id\": \"https://graph.microsoft.com/v1.0/directoryObjects/{newId}\"}}",
+                    Encoding.UTF8, "application/json")
+            };
+            resp = await http.SendAsync(request);
+            if (resp.IsSuccessStatusCode)
+                _logger.LogInformation($"User {email} added to group");
+            else if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var msg = JsonDocument.Parse(json).RootElement.GetProperty("error").GetProperty("message").GetString();
+                if (msg.StartsWith("One or more added object references already exist"))
+                    _logger.LogInformation($"{model.CorrelationId}: User {email} already exists as member of the group");
+                else
+                {
+                    _logger.LogError($"{model.CorrelationId}: Unusual bad request error when adding {email} to the security group. {msg}");
+                    model.Message = "Error adding to security group.";
+                    return View(model);
+                }
+            }
+            else
             {
                 var err = await resp.Content.ReadAsStringAsync();
-                _logger.LogError($"{model.CorrelationId}: Failed to process invitation. {err}");
-                model.Message = "Invitation failed.";
+                _logger.LogError($"{model.CorrelationId}: Failed to add {email} to the security group. {err}");
+                model.Message = "Unexpected error occurred.";
+                return View(model);
             }
+            model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
             _logger.LogTrace($"{model.CorrelationId}: Home.Index exiting");
             return View(model);
         }
