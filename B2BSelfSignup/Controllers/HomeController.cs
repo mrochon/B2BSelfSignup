@@ -78,7 +78,7 @@ namespace B2BSelfSignup.Controllers
                 var err = await resp.Content.ReadAsStringAsync();
                 if (err.Contains("The invited user already exists in the directory"))
                 {
-                    var msg = JsonDocument.Parse(err).RootElement.GetProperty("message").GetString();
+                    var msg = JsonDocument.Parse(err).RootElement.GetProperty("error").GetProperty("message").GetString();
                     _logger.LogWarning($"{model.CorrelationId}: {msg}");
                     newId = msg.Split(": ")[1].Split('.')[0];
                 }
