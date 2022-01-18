@@ -17,7 +17,7 @@ namespace B2BSelfSignup.Models
         public bool ShowRedirectUrl => !string.IsNullOrEmpty(RedirectUrl);
         public string Message
         {
-            get => $"{CorrelationId}: {Email}/{Tid} {_msg}";
+            get => $"{CorrelationId}: {Email}/{Tid} - {_msg}";
             set => _msg = value;
         }
         private string _msg;

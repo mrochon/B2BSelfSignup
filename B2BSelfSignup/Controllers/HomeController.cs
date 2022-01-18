@@ -55,7 +55,7 @@ namespace B2BSelfSignup.Controllers
             if (!_invitationOptions.Value.TenantToGroupMapping.Keys.Contains(tid))
             {
                 _logger.LogError($"{model.CorrelationId}: Unauthorized: {tid}");
-                model.Message = $"Unauthorized {tid}.";
+                model.Message = $"Unauthorized.";
                 return View(model);
             }
 
