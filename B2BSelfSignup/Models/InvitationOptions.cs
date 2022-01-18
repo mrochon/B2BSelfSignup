@@ -10,6 +10,6 @@ namespace B2BSelfSignup.Models
         public string RedirectUrl { get; set; }
         public string HostTenantName { get; set; }
         public string HostTenantId { get; set; }
-        public IDictionary<string, string> TenantToGroupMapping { get; set; }
+        public Dictionary<string, string> TenantToGroupMapping { get; set; }
     }
 }
