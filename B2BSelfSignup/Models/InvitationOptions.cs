@@ -7,10 +7,9 @@ namespace B2BSelfSignup.Models
 {
     public class InvitationOptions
     {
-        public string GroupObjectId { get; set; }
         public string RedirectUrl { get; set; }
         public string HostTenantName { get; set; }
         public string HostTenantId { get; set; }
-        public IEnumerable<string> ValidTenants { get; set; }
+        public IDictionary<string, string> TenantToGroupMapping { get; set; }
     }
 }

@@ -39,29 +39,33 @@ namespace B2BSelfSignup.Controllers
         public async Task<IActionResult> Index()
         {
             var model = new HomeViewModel();
-            _logger.LogTrace($"{model.CorrelationId}: Home.Index starting");
+            _logger.LogInformation($"{model.CorrelationId}: Home.Index starting");
             var email = User.FindFirst("preferred_username").Value;
             model.Email = email;
-            _logger.LogTrace($"{model.CorrelationId}: {email}");
+            _logger.LogInformation($"{model.CorrelationId}: {email}");
             var tid = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid").Value;
             model.Tid = tid;
             if (tid == _invitationOptions.Value.HostTenantId)
             {
-                _logger.LogTrace($"{model.CorrelationId}: Current memeber: {tid}");
+                _logger.LogInformation($"{model.CorrelationId}: Current memeber: {tid}");
                 model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
                 model.Message = "You are already a member of this domain";
                 return View(model);
             }
-            if (!_invitationOptions.Value.ValidTenants.Contains(tid))
+            if (!_invitationOptions.Value.TenantToGroupMapping.Keys.Contains(tid))
             {
                 _logger.LogError($"{model.CorrelationId}: Unauthorized: {tid}");
                 model.Message = $"Unauthorized {tid}.";
                 return View(model);
             }
 
-            var token = await _tokenAcquisition.GetAccessTokenForAppAsync("https://graph.microsoft.com/.default", _invitationOptions.Value.HostTenantName);
+            _logger.LogInformation($"{model.CorrelationId}: Acquiring token");
+            var token = await _tokenAcquisition.GetAccessTokenForAppAsync(
+                scope: "https://graph.microsoft.com/.default", 
+                tenant: _invitationOptions.Value.HostTenantName);
             var http = new HttpClient();
             http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            _logger.LogInformation($"{model.CorrelationId}: Token acquired: {token.Split('.')[0]}.{token.Split('.')[1]}.signature");
             var invitation = new
             {
                 invitedUserEmailAddress = email,
@@ -95,7 +99,7 @@ namespace B2BSelfSignup.Controllers
                 var json = await resp.Content.ReadAsStringAsync();
                 newId = JsonDocument.Parse(json).RootElement.GetProperty("invitedUser").GetProperty("id").GetString();
             }
-            request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/groups/{_invitationOptions.Value.GroupObjectId}/members/$ref")
+            request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/groups/{_invitationOptions.Value.TenantToGroupMapping[tid]}/members/$ref")
             {
                 Content = new StringContent(
                     $"{{\"@odata.id\": \"https://graph.microsoft.com/v1.0/directoryObjects/{newId}\"}}",
@@ -125,7 +129,7 @@ namespace B2BSelfSignup.Controllers
                 return View(model);
             }
             model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
-            _logger.LogTrace($"{model.CorrelationId}: Home.Index exiting");
+            _logger.LogInformation($"{model.CorrelationId}: Home.Index exiting");
             return View(model);
         }
         [AllowAnonymous]

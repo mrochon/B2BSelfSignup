@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace B2BSelfSignup
@@ -44,7 +45,7 @@ namespace B2BSelfSignup
                 {
                     validTenants = (validTenants.Concat(tenants.Split(' ', ','))).ToList();
                 }
-                options.ValidTenants = validTenants;
+                //options.ValidTenants = validTenants;
             });
             services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApp(Configuration.GetSection("AzureAd"))
