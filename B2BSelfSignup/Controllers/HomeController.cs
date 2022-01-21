@@ -128,6 +128,26 @@ namespace B2BSelfSignup.Controllers
                 model.Message = "Unexpected error occurred.";
                 return View(model);
             }
+            // Update user profile
+            _logger.LogInformation($"{model.CorrelationId}: Updating {email} profile data");
+            _logger.LogInformation($"{model.CorrelationId}: ----- {User.FindFirst("name")?.Value} profile data");
+            var profile = new
+            {
+                name = User.FindFirst("name")?.Value,
+                given_name = User.FindFirst("given_name")?.Value,
+                family_name = User.FindFirst("family_name")?.Value
+            };
+            request = new HttpRequestMessage(HttpMethod.Patch, $"https://graph.microsoft.com/v1.0/users/{newId}")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(profile), Encoding.UTF8, "application/json")
+            };
+            resp = await http.SendAsync(request);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                _logger.LogWarning($"{model.CorrelationId}: Failed to update user {newId} profile. {err}");
+            }
+
             model.RedirectUrl = _invitationOptions.Value.RedirectUrl;
             _logger.LogInformation($"{model.CorrelationId}: Home.Index exiting");
             return View(model);
