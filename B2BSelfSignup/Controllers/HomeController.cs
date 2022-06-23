@@ -108,7 +108,9 @@ namespace B2BSelfSignup.Controllers
             };
             resp = await http.SendAsync(request);
             if (resp.IsSuccessStatusCode)
+            {
                 _logger.LogInformation($"User {email} added to group");
+            }
             else if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
             {
                 var json = await resp.Content.ReadAsStringAsync();
